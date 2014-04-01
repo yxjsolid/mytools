@@ -88,6 +88,7 @@ strData = genData(1500)
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)					##Create socket
 sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, intTTL)		##Socket type is Multicast
+sock.bind()
 
 
 while True:
@@ -103,3 +104,5 @@ while True:
     print '\x0D'
     break
 ##-----------------------------------------------------------------
+
+
