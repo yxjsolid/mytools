@@ -5,6 +5,12 @@ from time import sleep
 from udpGenGui import *
 import wx.lib.agw.genericmessagedialog as GMD
 
+defaultPktData = '0000000000020000000000000474657374056c6f63616c0000010001c00c001c0001'
+defaultSrcIp = '192.168.168.1'
+defaultDstIp = '224.0.0.251'
+defaultDstPort = '5353'
+defaultSrcPort = '5353'
+
 
 def genData(dataLen):
     dataString = ""
@@ -16,11 +22,14 @@ def genData(dataLen):
 
 
 class udpGen():
+    totalSend = 0
+
     def __init__(self):
         self.intervalMs = 10
         self.pktNum = 1
         self.ttl = 10
         self.srcPort = 0
+        #self.totalSend = 0
         pass
 
     def setSrc(self, ip, port):
@@ -39,26 +48,36 @@ class udpGen():
         self.intervalMs = int(interval)
 
     def openSocket(self):
-        self.s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.s.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-        self.s.bind((self.srcIp, int(self.srcPort)))
-        self.s.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, self.ttl)
-        self.s.setsockopt(socket.IPPROTO_IP, socket.IP_TTL, self.ttl)
+        try:
+            self.s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            self.s.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+            self.s.bind((self.srcIp, int(self.srcPort)))
+            self.s.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, self.ttl)
+            self.s.setsockopt(socket.IPPROTO_IP, socket.IP_TTL, self.ttl)
+            return True
+        except:
+            return False
 
     def doSend(self, data, gui):
         cnt = 0
-        self.openSocket()
+        if not self.openSocket():
+            if gui:
+                gui.doAlert("socket init failed, port may be occupied")
+
+            return
 
         while True:
             try:
                 s = self.s
                 s.sendto(data, (self.dstIp, int(self.dstPort)))
                 cnt += 1
+                self.__class__.totalSend += 1
                 if gui:
+                    gui.doSetStatusBar("total send: %d" % self.__class__.totalSend, 1)
                     if not gui.running:
-                        gui.doSetStatusBar("Sent: %d" % cnt + "  force stopped")
+                        gui.doSetStatusBar("packet send: %d" % cnt + "  force stopped", 0)
                         break
-                    gui.doSetStatusBar("Sent: %d" % cnt)
+                    gui.doSetStatusBar("packet send: %d" % cnt, 0)
 
                 if cnt >= self.pktNum:
                     break
@@ -77,7 +96,15 @@ class udpGenGui(udpGenGuiBase):
         udpGenGuiBase.__init__(self, parent)
         self.running = 0
         self.index = 0
-        self.setPktDataModeAuto(1)
+        self.setPktDataModeAuto(0)
+        self.setDefault()
+
+    def setDefault(self):
+        self.txt_dstIp.SetValue(defaultDstIp)
+        self.txt_srcIp.SetValue(defaultSrcIp)
+        self.txt_srcPort.SetValue(defaultSrcPort)
+        self.txt_dstPort.SetValue(defaultDstPort)
+        self.setPktDataString(defaultPktData)
 
     def onSend(self, evt):
         gen = udpGen()
@@ -89,7 +116,7 @@ class udpGenGui(udpGenGuiBase):
         data = self.getPktData()
 
         if data is None:
-            self.doAlert()
+            self.doAlert("packet data should be hex format")
             return
 
         self.btn_send.Disable()
@@ -140,15 +167,15 @@ class udpGenGui(udpGenGuiBase):
         self.txt_dataSize.SetValue('0')
         self.txt_pktData.Clear()
 
-    def doSetStatusBar(self, txt):
+    def doSetStatusBar(self, txt, num):
 
-        self.SetStatusText(txt)
+        self.SetStatusText(txt, num)
 
-    def doAlert(self):
+    def doAlert(self, error):
         dlgStyle = wx.ICON_ERROR
         btnStyle = wx.OK
 
-        dlg = GMD.GenericMessageDialog(self, "packet data should be hex format",
+        dlg = GMD.GenericMessageDialog(self, error,
                                        "ERROR",
                                        btnStyle | dlgStyle)
         dlg.ShowModal()
