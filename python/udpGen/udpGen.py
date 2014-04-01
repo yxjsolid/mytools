@@ -1,3 +1,4 @@
+#coding=utf-8
 import sys
 import socket
 import binascii
@@ -29,7 +30,6 @@ class udpGen():
         self.pktNum = 1
         self.ttl = 10
         self.srcPort = 0
-        #self.totalSend = 0
         pass
 
     def setSrc(self, ip, port):
@@ -56,6 +56,7 @@ class udpGen():
             self.s.setsockopt(socket.IPPROTO_IP, socket.IP_TTL, self.ttl)
             return True
         except:
+            print sys.exc_info()
             return False
 
     def doSend(self, data, gui):
@@ -63,7 +64,6 @@ class udpGen():
         if not self.openSocket():
             if gui:
                 gui.doAlert("socket init failed, port may be occupied")
-
             return
 
         while True:
@@ -114,7 +114,6 @@ class udpGenGui(udpGenGuiBase):
         gen.setPktSendCfg(self.getPktNum(), self.getInterval())
 
         data = self.getPktData()
-
         if data is None:
             self.doAlert("packet data should be hex format")
             return
