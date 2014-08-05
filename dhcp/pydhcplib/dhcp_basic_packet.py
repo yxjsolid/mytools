@@ -140,6 +140,9 @@ class DhcpBasicPacket:
 
         packet = self.packet_data[:240] + options
         packet.append(255) # add end option
+
+        for i in range(300 - len(packet)):
+            packet.append(0)
         pack_fmt = str(len(packet))+"c"
 
         packet = map(chr,packet)
