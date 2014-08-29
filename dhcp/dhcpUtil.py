@@ -13,11 +13,19 @@ class MyDhcpPacket(DhcpPacket):
         self.SetOption("htype",[1])
         self.SetOption("hlen",[6])
         self.SetOption("xid",[0x34,0x87,0x11,0x31])
-
-        self.SetOption("op",[1])
-        self.SetOption("dhcp_message_type",[8])
         self.SetOption("host_name", strlist("xyang-test").list())
 
+    def setRequest(self):
+        self.SetOption("op",[1])
+
+    def setTypeInfom(self):
+        self.SetOption("dhcp_message_type",[8])
+
+    def setReply(self):
+        self.SetOption("op",[2])
+
+    def setTypeOffer(self):
+        self.SetOption("dhcp_message_type",[2])
 
     def setBootpFlag(self, isBoradCast):
         if isBoradCast:
@@ -32,17 +40,20 @@ class MyDhcpPacket(DhcpPacket):
         ipList =  map(lambda x : int(x,10), ipStr.split("."))
         self.SetOption("ciaddr",ipList)
 
+    def setYiClientIp(self, ipStr):
+        ipList =  map(lambda x : int(x,10), ipStr.split("."))
+        self.SetOption("yiaddr",ipList)
+
     def setRequestOption(self, reqList):
         self.SetOption("parameter_request_list",reqList)
 
+    def setRealyAgent(self, ipStr):
+        ipList =  map(lambda x : int(x,10), ipStr.split("."))
+        self.SetOption("giaddr", ipList)
+
 
 class MyClient(DhcpClient):
-   def __init__(self):
-       netopt = {'client_listen_port':68,
-          'server_listen_port':67,
-          'listen_address':"0.0.0.0"}
-
-
+   def __init__(self, netopt):
        DhcpClient.__init__(self,netopt["listen_address"],
                            netopt["client_listen_port"],
                            netopt["server_listen_port"])
@@ -56,14 +67,38 @@ class MyClient(DhcpClient):
 
 
 def sendDhcpInformPacket(clientMac, clientIp, dstIp, reqList, isBroadCast):
-    client = MyClient()
+
+    netopt = {'client_listen_port':68,'server_listen_port':67,'listen_address':"0.0.0.0"}
+
+    client = MyClient(netopt)
     client.BindToAddress()
     packet = MyDhcpPacket()
+
+    packet.setRequest()
+    packet.setTypeInfom()
 
     packet.setClientMac(clientMac)
     packet.setClientIp(clientIp)
     packet.setBootpFlag(isBroadCast)
     packet.setRequestOption(reqList)
+    client.SendDhcpPacketTo(packet, dstIp, 67)
+
+
+def sendDhcpOfferPacket(clientMac, clientIp, dstIp, relayAgentIp, isBroadCast):
+
+    netopt = {'client_listen_port':67,'server_listen_port':67,'listen_address':"0.0.0.0"}
+
+    client = MyClient(netopt)
+    client.BindToAddress()
+    packet = MyDhcpPacket()
+
+    packet.setReply()
+    packet.setTypeOffer()
+
+    packet.setClientMac(clientMac)
+    packet.setYiClientIp(clientIp)
+    packet.setBootpFlag(isBroadCast)
+    packet.setRealyAgent(relayAgentIp)
 
     client.SendDhcpPacketTo(packet, dstIp, 67)
 
